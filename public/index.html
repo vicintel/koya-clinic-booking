@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinic Booking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f7f5;
+    --card: #ffffff;
+    --ink: #17201b;
+    --muted: #5f6b64;
+    --line: #e2e6e2;
+    --accent: #0f766e;
+    --accent-ink: #ffffff;
+    --accent-soft: #e6f3f1;
+    --danger: #b42318;
+    --danger-soft: #fdecea;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.5 Inter, system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
+  header { margin-bottom: 28px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 17px; margin: 0 0 14px; }
+  p.lead { color: var(--muted); margin: 0; }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+  .toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar h2 { margin: 0; }
+  select, input {
+    font: inherit;
+    color: inherit;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    width: 100%;
+  }
+  select { width: auto; }
+  select:focus, input:focus, button:focus-visible, .slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .day { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 16px 0 8px; }
+  .day:first-child { margin-top: 0; }
+  .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .slot {
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .slot:hover:not(:disabled) { border-color: var(--accent); }
+  .slot[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+  .slot:disabled { cursor: not-allowed; color: #9aa39e; background: #fafbfa; }
+  .slot .time { font-weight: 600; display: block; }
+  .slot .who { font-size: 13px; color: var(--muted); }
+  .slot:disabled .who { color: inherit; }
+  .tag { font-size: 12px; margin-left: 4px; }
+  form { display: grid; gap: 12px; }
+  label { font-size: 13px; font-weight: 500; display: grid; gap: 5px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chosen { padding: 10px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .chosen.empty { background: #f1f3f1; color: var(--muted); font-weight: 400; }
+  button.primary {
+    font: inherit;
+    font-weight: 600;
+    border: 0;
+    border-radius: 8px;
+    padding: 11px 16px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .msg { padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+  .msg.error { background: var(--danger-soft); color: var(--danger); }
+  .confirmation { border-color: var(--accent); }
+  .confirmation h2 { color: var(--accent); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; word-break: break-all; }
+  .lookup { display: flex; gap: 8px; }
+  .lookup input { flex: 1; }
+  .muted { color: var(--muted); }
+  [hidden] { display: none !important; }
+  @media (max-width: 540px) {
+    main { padding-top: 28px; }
+    .row { grid-template-columns: 1fr; }
+    .lookup { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Book a clinic appointment</h1>
+    <p class="lead">Pick a free slot, add your details, and you'll get a booking reference straight away.</p>
+  </header>
+
+  <section>
+    <div class="toolbar">
+      <h2>1. Choose a slot</h2>
+      <select id="provider" aria-label="Filter by doctor"><option value="">All doctors</option></select>
+    </div>
+    <div id="slots"><p class="muted">Loading slots…</p></div>
+  </section>
+
+  <section>
+    <h2>2. Your details</h2>
+    <form id="book" novalidate>
+      <div id="chosen" class="chosen empty">No slot chosen yet</div>
+      <div class="row">
+        <label>Full name <input id="name" name="name" autocomplete="name" required></label>
+        <label>Email <input id="email" name="email" type="email" autocomplete="email" required></label>
+      </div>
+      <div id="error" class="msg error" role="alert" hidden></div>
+      <button class="primary" id="submit" type="submit" disabled>Book appointment</button>
+    </form>
+  </section>
+
+  <section id="confirmation" class="confirmation" hidden aria-live="polite">
+    <h2>Booking confirmed</h2>
+    <dl id="details"></dl>
+  </section>
+
+  <section>
+    <h2>Look up a booking</h2>
+    <form id="lookup" class="lookup">
+      <input id="lookup-id" placeholder="Booking reference" aria-label="Booking reference" required>
+      <button class="primary" type="submit">Look up</button>
+    </form>
+    <div id="lookup-result" style="margin-top:14px" hidden></div>
+  </section>
+</main>
+
+<script>
+  // The page calls /ui/*, which runs the same booking logic as the API
+  // while keeping the API key on the server.
+  const $ = (id) => document.getElementById(id);
+  let slots = [];
+  let chosen = null;
+
+  const fmtDay = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const fmtWhen = (slot) => `${fmtDay(slot.start)}, ${fmtTime(slot.start)}–${fmtTime(slot.end)}`;
+
+  async function api(method, path, body, headers = {}) {
+    const res = await fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json", ...headers },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data, retryAfter: res.headers.get("Retry-After") };
+  }
+
+  async function loadSlots() {
+    const { ok, data } = await api("GET", "/ui/slots");
+    if (!ok) { $("slots").innerHTML = '<p class="msg error">Couldn\'t load slots. Please refresh.</p>'; return; }
+    slots = data.slots;
+    const providers = [...new Set(slots.map((s) => s.provider))];
+    const select = $("provider");
+    const current = select.value;
+    select.innerHTML = '<option value="">All doctors</option>' +
+      providers.map((p) => `<option>${escapeHtml(p)}</option>`).join("");
+    select.value = providers.includes(current) ? current : "";
+    renderSlots();
+  }
+
+  function renderSlots() {
+    const provider = $("provider").value;
+    const now = Date.now();
+    const visible = slots.filter((s) => (!provider || s.provider === provider) && new Date(s.start) > now);
+    if (!visible.length) { $("slots").innerHTML = '<p class="muted">No upcoming slots.</p>'; return; }
+
+    let html = "", day = null;
+    for (const s of visible) {
+      const d = fmtDay(s.start);
+      if (d !== day) { html += `${day ? "</div>" : ""}<div class="day">${d}</div><div class="slots">`; day = d; }
+      html += `<button type="button" class="slot" data-id="${escapeHtml(s.id)}" ${s.available ? "" : "disabled"}
+        aria-pressed="${chosen && chosen.id === s.id}">
+        <span class="time">${fmtTime(s.start)}${s.available ? "" : '<span class="tag">· Booked</span>'}</span>
+        <span class="who">${escapeHtml(s.provider)}</span></button>`;
+    }
+    $("slots").innerHTML = html + "</div>";
+  }
+
+  function choose(id) {
+    chosen = slots.find((s) => s.id === id) || null;
+    $("chosen").className = chosen ? "chosen" : "chosen empty";
+    $("chosen").textContent = chosen ? `${chosen.provider} · ${fmtWhen(chosen)}` : "No slot chosen yet";
+    $("submit").disabled = !chosen;
+    renderSlots();
+  }
+
+  function showError(text) {
+    $("error").textContent = text;
+    $("error").hidden = !text;
+  }
+
+  function bookingDetails(b) {
+    const slot = slots.find((s) => s.id === b.slot_id);
+    const rows = [
+      ["Reference", b.id],
+      ["Status", b.status === "confirmed" ? "Confirmed" : "Cancelled"],
+      ["Doctor", slot ? slot.provider : "—"],
+      ["When", slot ? fmtWhen(slot) : b.slot_id],
+      ["Name", b.name],
+      ["Email", b.email],
+    ];
+    return rows.map(([k, v]) => `<dt>${k}</dt><dd>${escapeHtml(v)}</dd>`).join("");
+  }
+
+  $("slots").addEventListener("click", (e) => {
+    const btn = e.target.closest(".slot");
+    if (btn && !btn.disabled) choose(btn.dataset.id);
+  });
+  $("provider").addEventListener("change", renderSlots);
+
+  $("book").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    showError("");
+    const name = $("name").value.trim();
+    const email = $("email").value.trim();
+    if (!chosen) return showError("Choose a slot first.");
+    if (!name) return showError("Please enter your name.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError("Please enter a valid email address.");
+
+    $("submit").disabled = true;
+    $("submit").textContent = "Booking…";
+    // One key per booking, so a network retry can never book twice.
+    const key = crypto.randomUUID();
+    let res;
+    try {
+      res = await api("POST", "/ui/bookings", { slot_id: chosen.id, name, email }, { "Idempotency-Key": key });
+    } catch {
+      res = await api("POST", "/ui/bookings", { slot_id: chosen.id, name, email }, { "Idempotency-Key": key })
+        .catch(() => ({ ok: false, status: 0, data: { error: "Network error. Please try again." } }));
+    }
+    $("submit").textContent = "Book appointment";
+
+    if (res.ok) {
+      $("details").innerHTML = bookingDetails(res.data);
+      $("confirmation").hidden = false;
+      $("confirmation").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("book").reset();
+      chosen = null;
+      choose(null);
+      await loadSlots();
+      return;
+    }
+    $("submit").disabled = false;
+    const messages = {
+      409: "Sorry, someone has just booked that slot. Please pick another.",
+      429: `Too many attempts. Please wait ${res.retryAfter || "a minute"} seconds and try again.`,
+    };
+    showError(messages[res.status] || res.data.error || "Something went wrong. Please try again.");
+    if (res.status === 409 || res.status === 400) { await loadSlots(); }
+  });
+
+  $("lookup").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = $("lookup-id").value.trim();
+    if (!id) return;
+    const box = $("lookup-result");
+    const { ok, data } = await api("GET", `/ui/bookings/${encodeURIComponent(id)}`);
+    box.hidden = false;
+    box.innerHTML = ok ? `<dl>${bookingDetails(data)}</dl>` : '<p class="msg error">No booking found with that reference.</p>';
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  loadSlots();
+</script>
+</body>
+</html>
